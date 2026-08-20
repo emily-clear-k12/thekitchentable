@@ -151,6 +151,35 @@ input:focus,textarea:focus,select.f:focus{border-color:var(--teal);background:#f
 .trackrow img{width:46px;height:46px;border-radius:5px;background:#e8dcc4;flex-shrink:0}
 .trackrow b{display:block;font-size:14px;font-weight:700;line-height:1.3}
 .trackrow span{font-size:12.5px;color:var(--ink-soft)}
+.hzwrap,.bcwrap{margin-bottom:14px}
+.bookcase{width:100%;height:auto;display:block;border-radius:10px;box-shadow:0 1px 3px rgba(60,40,20,.18)}
+.scenepick{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
+.hlabel{font-family:var(--body);font-size:19px;font-weight:700;fill:#fff;
+  paint-order:stroke;stroke:rgba(20,14,6,.55);stroke-width:4px;stroke-linejoin:round}
+.hsub{font-family:var(--body);font-size:16px;fill:#fff;opacity:.92;
+  paint-order:stroke;stroke:rgba(20,14,6,.55);stroke-width:3.5px;stroke-linejoin:round}
+.horizon{width:100%;height:auto;display:block;border-radius:10px;box-shadow:0 1px 3px rgba(60,40,20,.18)}
+.htick{font-family:var(--body);font-size:19px;fill:#fff;opacity:.95;
+  paint-order:stroke;stroke:rgba(20,14,6,.5);stroke-width:3.5px;stroke-linejoin:round}
+.whenpill{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  padding:3px 8px;border-radius:20px;background:#efe3cc;color:#7a5f34;margin-bottom:7px;margin-right:6px}
+.grouphead{font-family:var(--disp);font-weight:900;font-size:15px;color:#6f5b3f;margin:16px 0 8px}
+.grouphead:first-child{margin-top:0}
+.shelfbar{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}
+.shelfgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:15px;margin-bottom:4px}
+.shelfcard{background:none;border:0;padding:0;cursor:pointer;text-align:left;display:block}
+.shelfcard .art{position:relative;width:100%;aspect-ratio:2/3;border-radius:6px;overflow:hidden;
+  background:#cdbb9b;box-shadow:0 3px 8px rgba(60,40,16,.32);transition:transform .14s,box-shadow .14s}
+.shelfcard:hover .art{transform:translateY(-3px);box-shadow:0 7px 14px rgba(60,40,16,.36)}
+.shelfcard[aria-pressed="true"] .art{outline:3px solid #d9822b;outline-offset:2px}
+.shelfcard .art img{width:100%;height:100%;object-fit:cover;display:block}
+.shelfcard .spine{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  padding:10px;font-family:var(--disp);font-weight:700;font-size:13px;line-height:1.25;
+  color:#fdf6e7;text-align:center;text-shadow:0 1px 2px rgba(0,0,0,.35)}
+.shelfcard .spine::before{content:"";position:absolute;left:0;top:0;bottom:0;width:7px;background:rgba(0,0,0,.18)}
+.shelfcard b{display:block;font-size:13px;font-weight:700;line-height:1.3;margin-top:7px;
+  overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.shelfcard span{font-size:11.5px;color:var(--ink-soft);display:block;margin-top:2px}
 .mapwrap{margin-bottom:14px}
 .mapviews{display:flex;gap:7px;margin-bottom:9px}
 .worldmap{width:100%;height:auto;display:block;border-radius:10px;
@@ -246,6 +275,7 @@ input:focus,textarea:focus,select.f:focus{border-color:var(--teal);background:#f
   <g id="dynCork" class="paper"></g>
   <g id="dynFridge" class="paper"></g>
   <g id="dynMap" class="paper"></g>
+  <g id="dynShelf" class="paper"></g>
   <g id="dynRadio" class="paper"></g>
   <g id="card" class="paper"></g>
 
@@ -459,7 +489,7 @@ const SPOTS={
   shelf:{title:"The shelf",sub:"Books, shows, films, articles, videos, whatever you'd tell a friend about.",add:"Add something",cnt:"cShelf"},
   radio:{title:"The radio",sub:"The house playlist. Whatever's been in your ears.",add:"Add a song",cnt:"cRadio"},
   map:{title:"The map",sub:"Where everybody is, and everywhere you've been that's worth knowing about. Photos welcome.",add:"Drop a pin",cnt:"cMap"},
-  window:{title:"Out the window",sub:"What you're looking forward to. A trip, a concert, Friday.",add:"Add something",cnt:"cWindow"}
+  window:{title:"Out the window",sub:"What's coming up. Trips, time off, milestones, things you're dreading. Birthdays turn up on their own.",add:"Add something",cnt:"cWindow"}
 };
 const GEO={
   table:{cx:460,cy:812,rx:468,ry:122}, radio:{cx:85,cy:516,rx:82,ry:70},
@@ -475,7 +505,7 @@ const EMPTY={
   shelf:["The shelf is empty.","A book, a show, an article, a video — anything you'd tell a friend about."],
   radio:["Nothing's playing.","Add a song. No theme, no explanation required."],
   map:["No pins yet.","Drop one where you live, or somewhere you've been that stuck with you."],
-  window:["Nothing on the horizon yet.","A trip, a concert, a Friday. Small counts."]
+  window:["Nothing on the horizon yet.","A trip, time off, somebody's graduation — or something you're dreading. All of it counts."]
 };
 /* A simplified world, drawn from real coastlines, in plain equirectangular
    so a latitude and longitude turn into x,y with two sums. */
@@ -488,13 +518,24 @@ const MAP_VIEWS={
   na:{label:"North America", box:[mapX(-170),mapY(74),mapX(-52)-mapX(-170),mapY(6)-mapY(74)]}
 };
 
+/* The horizon you see out of the window: near things on the left, further off
+   to the right, on a square-root scale so next week isn't squashed. */
+const WIN_KINDS=["Looking forward to","Away","Milestone","Dreading it","Happening near me"];
+const WIN_COLOUR={"Looking forward to":"#2f7d74","Away":"#3f6f9e","Milestone":"#c08a2a",
+  "Dreading it":"#a8604a","Happening near me":"#4f7d3f","Birthday":"#c0567f"};
+const HORIZON_DAYS=210;
+const HILL_BACK="M0,240 L0,108.9 C71.4,108.9 71.4,130.9 142.9,130.9 C214.3,130.9 214.3,142.9 285.7,142.9 C357.1,142.9 357.1,142.7 428.6,142.7 C500.0,142.7 500.0,129.2 571.4,129.2 C642.9,129.2 642.9,111.2 714.3,111.2 C785.7,111.2 785.7,116.4 857.1,116.4 C928.6,116.4 928.6,136.4 1000.0,136.4 L1000,240 Z";
+const HILL_MID="M0,240 L0,180.8 C71.4,180.8 71.4,162.7 142.9,162.7 C214.3,162.7 214.3,136.9 285.7,136.9 C357.1,136.9 357.1,131.8 428.6,131.8 C500.0,131.8 500.0,157.4 571.4,157.4 C642.9,157.4 642.9,183.3 714.3,183.3 C785.7,183.3 785.7,169.5 857.1,169.5 C928.6,169.5 928.6,155.2 1000.0,155.2 L1000,240 Z";
+const HILL_FRONT="M0,240 L0,175.6 C71.4,175.6 71.4,191.0 142.9,191.0 C214.3,191.0 214.3,193.3 285.7,193.3 C357.1,193.3 357.1,187.4 428.6,187.4 C500.0,187.4 500.0,174.6 571.4,174.6 C642.9,174.6 642.9,167.1 714.3,167.1 C785.7,167.1 785.7,179.8 857.1,179.8 C928.6,179.8 928.6,191.1 1000.0,191.1 L1000,240 Z";
+
 const HUE=["#b0453a","#2f6b6b","#3f5a8a","#8a6a2a","#6b4a7a","#3f7a4a","#a8622a","#4a4a5a"];
 
 /* ---------- state ---------- */
 const S={data:{people:[],prompt:null,link:""},me:null,uid:null,spot:null,photos:{},pick:"auto",
   shelfKind:"Book",mapKind:"I've been here",pendingPhoto:null,seen:{},viewSeen:0,labels:false,
   layer:"A",room:null,pulled:null,track:null,results:null,pickId:null,rotating:false,
-  place:null,geoResults:null,mapView:"world",mapSel:null};
+  place:null,geoResults:null,mapView:"world",mapSel:null,winKind:"Looking forward to",winSel:null,
+  shelfPick:null,shelfResults:null,shelfFilter:"All",shelfSel:null};
 BUCKETS.forEach(b=>S.data[b]=[]);
 
 const $=id=>document.getElementById(id);
@@ -518,6 +559,7 @@ function rowToItem(r){
     note:r.note||"",url:r.url||"",kind:r.kind||"",art:r.art||"",preview:r.preview||"",
     photo:!!r.photo_path,photoPath:r.photo_path||"",qid:r.qid||"",
     lat:(typeof r.lat==="number")?r.lat:null,lon:(typeof r.lon==="number")?r.lon:null,
+    whenAt:r.when_at||"",
     keeps:Array.isArray(r.keeps)?r.keeps:[],metoo:Array.isArray(r.metoo)?r.metoo:[],
     at:Date.parse(r.created_at)||0,surfaced:Date.parse(r.surfaced_at)||0};
 }
@@ -533,7 +575,8 @@ async function loadAll(){
   BUCKETS.forEach(b=>S.data[b]=[]);
   (it.data||[]).forEach(r=>{ if(S.data[r.bucket]) S.data[r.bucket].push(rowToItem(r)); });
   BUCKETS.forEach(b=>S.data[b].sort((a,c)=>a.at-c.at));
-  S.data.people=(pe.data||[]).map(p=>({id:p.id,name:p.name,bday:p.bday||"",teach:p.teach||"",learn:p.learn||""}));
+  S.data.people=(pe.data||[]).map(p=>({id:p.id,name:p.name,bday:p.bday||"",teach:p.teach||"",
+    learn:p.learn||"",winScene:p.win_scene||"",shelfScene:p.shelf_scene||""}));
   S.data.prompt=null;S.data.link="";
   (mt.data||[]).forEach(m=>{ if(m.key==="prompt")S.data.prompt=m.value; if(m.key==="link")S.data.link=(m.value&&m.value.url)||""; });
   S.me=S.data.people.find(p=>p.id===S.uid)||null;
@@ -647,6 +690,7 @@ const lastUp=x=>x.surfaced||x.at||0;
 const staysUp=x=>(x.keeps&&x.keeps.length>=KEEPS_TO_STAY);
 function isSunk(b,x){
   if(b==="table")return x.qid!==qid();
+  if(b==="window"&&x.whenAt){ const n=daysUntil(x.whenAt); return n!==null&&n< -7; }
   if(!SINKS[b])return false;
   if(staysUp(x))return false;
   return (Date.now()-lastUp(x))>SINK_AFTER;
@@ -754,6 +798,13 @@ function drawStuff(){
     g.appendChild(el("circle",{cx:px-1.6,cy:py-1.6,r:1.7,fill:"#fff",opacity:".85"}));
   });
 
+  g=$("dynShelf");g.textContent="";
+  surfaceOf("shelf").filter(x=>x.art).slice(-4).forEach((x,i)=>{
+    const sx=1312+i*27, sy=380;
+    g.appendChild(el("rect",{x:sx,y:sy,width:24,height:34,rx:1,fill:"#f2e6cf"}));
+    g.appendChild(el("image",{href:x.art,x:sx,y:sy,width:24,height:34,preserveAspectRatio:"xMidYMid slice"}));
+  });
+
   g=$("dynRadio");g.textContent="";
   surfaceOf("radio").slice(-5).forEach((x,i)=>{
     r=hash(x.id);
@@ -806,7 +857,8 @@ function itemHtml(b,x,opts={}){
   let h='<div class="item'+(staysUp(x)?" stays":"")+'">';
   if(opts.from)h+='<span class="from">from '+esc(SPOTS[b].title)+"</span>";
   if(fresh)h+='<span class="newtag">new since you were here</span>';
-  if((b==="shelf"||b==="map")&&x.kind)h+='<span class="kind">'+esc(x.kind)+"</span>";
+  if(b==="window"&&x.whenAt)h+='<span class="whenpill">'+esc(whenWords(daysUntil(x.whenAt)))+"</span>";
+  if((b==="shelf"||b==="map"||b==="window")&&x.kind)h+='<span class="kind">'+esc(x.kind)+"</span>";
   if(x.photo)h+='<img class="shot" data-photo="'+esc(x.id)+'" alt="'+esc(x.title||"A photo")+'">';
   if(x.art)h+='<div style="display:flex;gap:12px;align-items:center;margin-bottom:9px">'
     +'<img class="cover" src="'+esc(x.art)+'" alt="">'
@@ -840,6 +892,58 @@ function renderDrawer(){
       +(qOpen()?"No obligation. This one clears on its own.":"This one's closed — a new question turns up "+DAYNAME[ROTATE_DAY]+".")
       +"</span></div>" : "";
   let shown=list, head="";
+  if(b==="shelf"){
+    const counts={};
+    list.forEach(x=>{ const k=x.kind||"Other"; counts[k]=(counts[k]||0)+1; });
+    const kinds=SHELF_KINDS.filter(k=>counts[k]);
+    if(list.length){
+      head='<div class="shelfbar">'
+        +['All',...kinds].map(k=>'<button class="chip" type="button" data-filter="'+esc(k)+'" aria-pressed="'
+          +(S.shelfFilter===k)+'">'+esc(k)+(k==="All"?" "+list.length:" "+counts[k])+"</button>").join("")
+        +"</div>";
+      const vis=S.shelfFilter==="All"?list:list.filter(x=>(x.kind||"Other")===S.shelfFilter);
+      head+=bookcaseSvg(vis);
+      const hidden=Math.max(0,vis.length-PER_SHELF*myShelfScene().shelves.length);
+      if(hidden)head+='<p class="mapnote">'+hidden+" older "+(hidden===1?"one is":"ones are")
+        +" off the shelf — use the buttons above to narrow it down.</p>";
+      shown = S.shelfSel ? list.filter(x=>x.id===S.shelfSel) : [];
+      head += S.shelfSel
+        ? '<p class="mapnote">Tap the cover again to put it back.</p>'
+        : '<p class="mapnote">Tap a cover to read why it\'s there.</p>';
+    }
+  }
+  if(b==="window"){
+    head=horizonSvg();
+    if(S.winSel){
+      const pick=list.filter(x=>x.id===S.winSel);
+      if(pick.length){
+        shown=pick;
+        head+='<p class="mapnote">Showing one. <button class="linkish" id="winAll" type="button">Show everything</button></p>';
+      }else{
+        const bm=birthdayMarkers().find(m=>m.id===S.winSel);
+        shown=[];
+        head+='<p class="mapnote">'+(bm?esc(bm.title)+" — "+esc(whenWords(bm.days))
+          +". That one comes from their card, not from here.":"")
+          +' <button class="linkish" id="winAll" type="button">Show everything</button></p>';
+      }
+    }else{
+      const groups=[["Next few days",x=>{const n=daysUntil(x.whenAt);return n!==null&&n<=7;}],
+                    ["This month",x=>{const n=daysUntil(x.whenAt);return n!==null&&n>7&&n<=31;}],
+                    ["Further off",x=>{const n=daysUntil(x.whenAt);return n!==null&&n>31;}],
+                    ["Just happened",x=>{const n=daysUntil(x.whenAt);return n!==null&&n<0;}],
+                    ["Someday",x=>!x.whenAt]];
+      let out="";
+      groups.forEach(([label,test])=>{
+        const g=list.filter(test).sort((a,c)=>{
+          const na=daysUntil(a.whenAt),nc=daysUntil(c.whenAt);
+          return (na===null?9e9:na)-(nc===null?9e9:nc);
+        });
+        if(g.length)out+='<div class="grouphead">'+label+"</div>"+g.map(x=>itemHtml(b,x)).join("");
+      });
+      if(out){ $("dItems").dataset.grouped="1"; head+=""; shown=null; S.winGrouped=out; }
+      else S.winGrouped=null;
+    }
+  }
   if(b==="map"){
     head=mapSvg();
     const unplaced=list.filter(x=>typeof x.lat!=="number").length;
@@ -852,8 +956,12 @@ function renderDrawer(){
     }
   }
   $("dQuestion").innerHTML=$("dQuestion").innerHTML+head;
-  $("dItems").innerHTML=shown.length?shown.map(x=>itemHtml(b,x)).join("")
-    :'<div class="nada"><b>'+esc(EMPTY[b][0])+"</b>"+esc(EMPTY[b][1])+"</div>";
+  if(b==="window"&&shown===null&&S.winGrouped){
+    $("dItems").innerHTML=S.winGrouped;
+  }else{
+    $("dItems").innerHTML=(shown&&shown.length)?shown.map(x=>itemHtml(b,x)).join("")
+      :'<div class="nada"><b>'+esc(EMPTY[b][0])+"</b>"+esc(EMPTY[b][1])+"</div>";
+  }
   loadPhotos();
 }
 function renderRummage(){
@@ -923,6 +1031,18 @@ async function thumbUrls(){
   }catch(e){ return false; }
 }
 
+async function pickScene(col,key){
+  if(!S.me)return;
+  if(col==="win_scene")S.me.winScene=key; else S.me.shelfScene=key;
+  renderDrawer();
+  try{
+    const patch={id:S.uid,name:S.me.name}; patch[col]=key;
+    await sb.from("people").upsert(patch);
+    const p=S.data.people.find(x=>x.id===S.uid);
+    if(p){ if(col==="win_scene")p.winScene=key; else p.shelfScene=key; }
+  }catch(e){ note("Couldn't remember that choice — it'll look right until you reload."); }
+}
+
 /* ---------- reactions ---------- */
 async function toggleMetoo(b,id){
   const x=findItem(b,id);
@@ -984,9 +1104,18 @@ function wirePhotoDrop(){
   if($("camBtn"))$("camBtn").addEventListener("click",()=>$("fileCam").click());
   if($("libBtn"))$("libBtn").addEventListener("click",()=>$("file").click());
 }
-const kindList=()=>S.spot==="map"?MAP_KINDS:SHELF_KINDS;
-const curKind=()=>S.spot==="map"?S.mapKind:S.shelfKind;
-const setKind=k=>{ if(S.spot==="map")S.mapKind=k; else S.shelfKind=k; };
+const kindList=()=>S.spot==="map"?MAP_KINDS:(S.spot==="window"?WIN_KINDS:SHELF_KINDS);
+const curKind=()=>S.spot==="map"?S.mapKind:(S.spot==="window"?S.winKind:S.shelfKind);
+const setKind=k=>{ if(S.spot==="map")S.mapKind=k; else if(S.spot==="window")S.winKind=k; else S.shelfKind=k; };
+function shelfLookupVisible(){
+  const row=$("sqRow");
+  if(!row)return;
+  const on=!!SHELF_LOOKUP[S.shelfKind];
+  row.hidden=!on;
+  if(!on){ $("sqOut").innerHTML=""; S.shelfPick=null; }
+  else $("sq").placeholder = S.shelfKind==="Book" ? "title, or title and author"
+       : (S.shelfKind==="Film" ? "film title" : "show title");
+}
 function renderKinds(){
   $("kinds").innerHTML=kindList().map(k=>
     '<button class="chip" type="button" aria-pressed="'+(k===curKind())+'" data-kind="'+esc(k)+'">'+esc(k)+"</button>").join("");
@@ -1003,6 +1132,11 @@ function formHtml(b){
     +'<div class="row"><label for="f3">Link (optional)</label><input type="url" id="f3" maxlength="400" placeholder="https://"></div>'
     +'<div class="row"><label for="f2">How you make it, or why it\'s good</label><textarea id="f2" maxlength="700"></textarea></div>';
   if(b==="shelf")return '<div class="row"><label>What kind</label><div class="chips" id="kinds"></div></div>'
+    +'<div class="row" id="sqRow"><label for="sq">Look it up</label>'
+    +'<div class="searchrow"><input type="text" id="sq" maxlength="90" placeholder="title, or title and author">'
+    +'<button class="btn sm" id="sqGo" type="button">Find</button></div>'
+    +'<div class="hint">Picking one grabs the cover. Skip it and just fill in the rest.</div></div>'
+    +'<div id="sqOut"></div>'
     +'<div class="row"><label for="f1">What is it</label><input type="text" id="f1" maxlength="120"></div>'
     +'<div class="row"><label for="f3">Link (optional)</label><input type="url" id="f3" maxlength="400" placeholder="https://"></div>'
     +'<div class="row"><label for="f2">Why (optional)</label><textarea id="f2" maxlength="400"></textarea></div>';
@@ -1023,9 +1157,209 @@ function formHtml(b){
     +'<div class="row"><label for="f1">What to call it</label><input type="text" id="f1" maxlength="70" placeholder="Juneau, AK"></div>'
     +'<div class="row"><label for="f2">Your favourite thing about it</label>'
     +'<div class="hint">A place to eat, a thing to see, a warning.</div><textarea id="f2" maxlength="300"></textarea></div>';
-  return '<div class="row"><label for="f1">What you\'re looking forward to</label>'
-    +'<input type="text" id="f1" maxlength="140" placeholder="Four days in Marfa in October"></div>'
+  return '<div class="row"><label>What sort of thing</label><div class="chips" id="kinds"></div></div>'
+    +'<div class="row"><label for="f1">What is it</label>'
+    +'<input type="text" id="f1" maxlength="140" placeholder="Four days in Marfa"></div>'
+    +'<div class="row"><label for="fd">When (optional)</label>'
+    +'<div class="hint">Give it a date and it shows up on the horizon. Leave it blank and it sits under Someday.</div>'
+    +'<input type="date" id="fd"></div>'
     +'<div class="row"><label for="f2">Anything else (optional)</label><textarea id="f2" maxlength="300"></textarea></div>';
+}
+
+/* Scenes people pick for themselves. Images live in the Supabase "scenes"
+   bucket; shelf measurements are per plate so covers sit on the wood. */
+const WINDOW_SCENES=[
+  {key:"mountains",label:"Mountains",file:"mountains.jpg"},
+  {key:"beach",label:"Beach",file:"beach.jpg"},
+  {key:"desert",label:"Desert",file:"desert.jpg"},
+  {key:"rooftop",label:"Rooftop",file:"rooftop.jpg"}
+];
+const SHELF_SCENES=[
+  {key:"neutral",label:"Calm",file:"neutral.jpg",shelves:[0.2637, 0.4365, 0.624],x0:0.2012,x1:0.8027},
+  {key:"fantasy",label:"Fantasy",file:"fantasy.jpg",shelves:[0.2441, 0.4355, 0.624],x0:0.2005,x1:0.8027},
+  {key:"sports",label:"Sports",file:"sports.jpg",shelves:[0.2656, 0.459, 0.6289],x0:0.2005,x1:0.8034},
+  {key:"garden",label:"Garden",file:"garden.jpg",shelves:[0.2451, 0.4365, 0.624],x0:0.2012,x1:0.8027},
+  {key:"vintage",label:"Vintage",file:"vintage.jpg",shelves:[0.2646, 0.4385, 0.627],x0:0.2012,x1:0.8034},
+  {key:"retro",label:"Retro",file:"retro.jpg",shelves:[0.2637, 0.4561, 0.624],x0:0.2012,x1:0.8027}
+];
+const sceneUrl=f=>SB_URL+"/storage/v1/object/public/scenes/"+f;
+const myWindowScene=()=>WINDOW_SCENES.find(w=>w.key===(S.me&&S.me.winScene))||WINDOW_SCENES[0];
+const myShelfScene=()=>SHELF_SCENES.find(w=>w.key===(S.me&&S.me.shelfScene))||SHELF_SCENES[0];
+
+/* ---------- the horizon ---------- */
+function midnight(d){const x=new Date(d);x.setHours(0,0,0,0);return x;}
+function daysUntil(iso){
+  if(!iso)return null;
+  const q=String(iso).split("-");
+  if(q.length<3)return null;
+  const then=new Date(+q[0],+q[1]-1,+q[2]);
+  return Math.round((midnight(then)-midnight(new Date()))/DAY);
+}
+function whenWords(n){
+  if(n===null)return "";
+  if(n===0)return "today";
+  if(n===1)return "tomorrow";
+  if(n===-1)return "was yesterday";
+  if(n<0)return "was "+(-n)+" days ago";
+  if(n<7)return "in "+n+" days";
+  if(n<14)return "next week";
+  if(n<60)return "in "+Math.round(n/7)+" weeks";
+  return "in "+Math.round(n/30)+" months";
+}
+/* birthdays drift in from people's cards — nobody adds or removes them here */
+function birthdayMarkers(){
+  const out=[],today=midnight(new Date());
+  S.data.people.forEach(p=>{
+    if(!p.bday)return;
+    const q=p.bday.split("-");
+    if(q.length<2)return;
+    let d=new Date(today.getFullYear(),+q[0]-1,+q[1]);
+    if(d<today)d=new Date(today.getFullYear()+1,+q[0]-1,+q[1]);
+    const n=Math.round((d-today)/DAY);
+    if(n<=HORIZON_DAYS)out.push({id:"bday-"+p.id,birthday:true,kind:"Birthday",
+      title:p.name+"'s birthday",by:p.name,byId:p.id,days:n});
+  });
+  return out;
+}
+function horizonItems(){
+  const real=surfaceOf("window").filter(x=>x.whenAt).map(x=>({...x,days:daysUntil(x.whenAt)}))
+    .filter(x=>x.days!==null&&x.days>=-7&&x.days<=HORIZON_DAYS);
+  return real.concat(birthdayMarkers()).sort((a,b)=>a.days-b.days);
+}
+const HZ_W=1800, HZ_H=620, HZ_LINE=0.855, HZ_X0=0.045, HZ_X1=0.965;
+function horizonX(days){
+  const d=Math.max(0,Math.min(HORIZON_DAYS,days));
+  /* gently eased so next week isn't crushed against the left edge,
+     while the months still read as evenly spaced further out */
+  const t=Math.pow(d/HORIZON_DAYS,0.78);
+  return (HZ_X0+(HZ_X1-HZ_X0)*t)*HZ_W;
+}
+function horizonSvg(){
+  const scene=myWindowScene(), items=horizonItems(), lineY=HZ_H*HZ_LINE;
+  const now=new Date();
+  let ticks="";
+  for(let m=0;m<=12;m++){
+    const t=new Date(now.getFullYear(),now.getMonth()+m,1);
+    const n=Math.round((midnight(t)-midnight(now))/DAY);
+    if(n<10||n>HORIZON_DAYS)continue;
+    const x=horizonX(n);
+    ticks+='<circle cx="'+x.toFixed(1)+'" cy="'+lineY.toFixed(1)+'" r="4" fill="#fff" opacity=".85"/>'
+      +'<text x="'+x.toFixed(1)+'" y="'+(lineY+34).toFixed(1)+'" text-anchor="middle" class="htick">'
+      +MONTHS[t.getMonth()].slice(0,3).toLowerCase()+"</text>";
+  }
+  /* stack labels into as many lanes as the crowding needs */
+  const laneRight=[];
+  const LANES=4;
+  const marks=items.map(x=>{
+    const cx=horizonX(x.days);
+    const when=x.birthday?whenWords(x.days):(x.whenAt?whenWords(daysUntil(x.whenAt)):"");
+    const title=(x.title||"").slice(0,24);
+    const wide=Math.max(title.length*10.2, when.length*8.6, 58)+22;
+    let lane=0;
+    while(lane<LANES-1&&laneRight[lane]!==undefined&&cx-wide/2<laneRight[lane])lane++;
+    laneRight[lane]=cx+wide/2;
+    const top=lineY-104-lane*70;
+    const col=WIN_COLOUR[x.kind]||WIN_COLOUR["Looking forward to"];
+    const sel=S.winSel===x.id;
+    return '<g class="hmark" data-when="'+esc(x.id)+'" style="cursor:pointer">'
+      +'<rect x="'+(cx-42).toFixed(1)+'" y="'+(top-46).toFixed(1)+'" width="84" height="'+(lineY-top+50).toFixed(1)+'" fill="transparent"/>'
+      +'<line x1="'+cx.toFixed(1)+'" y1="'+lineY.toFixed(1)+'" x2="'+cx.toFixed(1)+'" y2="'+(top+21).toFixed(1)+'" stroke="#fff" stroke-width="2.2" opacity=".88"/>'
+      +'<circle cx="'+cx.toFixed(1)+'" cy="'+lineY.toFixed(1)+'" r="5" fill="#fff"/>'
+      +(sel?'<circle cx="'+cx.toFixed(1)+'" cy="'+top.toFixed(1)+'" r="34" fill="'+col+'" opacity=".3"/>':"")
+      +(x.birthday
+        ? '<rect x="'+(cx-15).toFixed(1)+'" y="'+(top-15).toFixed(1)+'" width="30" height="30" rx="3" fill="'+col+'" stroke="#fff" stroke-width="2.6" transform="rotate(45 '+cx.toFixed(1)+' '+top.toFixed(1)+')"/>'
+        : '<circle cx="'+cx.toFixed(1)+'" cy="'+top.toFixed(1)+'" r="19" fill="'+col+'" stroke="#fff" stroke-width="2.6"/>')
+      +'<text x="'+cx.toFixed(1)+'" y="'+(top-40).toFixed(1)+'" text-anchor="middle" class="hlabel">'+esc(title)+"</text>"
+      +'<text x="'+cx.toFixed(1)+'" y="'+(top-19).toFixed(1)+'" text-anchor="middle" class="hsub">'+esc(when)+"</text>"
+      +"</g>";
+  }).join("");
+  return '<div class="hzwrap"><svg class="horizon" viewBox="0 0 '+HZ_W+' '+HZ_H+'" role="img" aria-label="What is coming up">'
+    +'<image href="'+sceneUrl(scene.file)+'" x="0" y="0" width="'+HZ_W+'" height="'+HZ_H+'" preserveAspectRatio="xMidYMid slice"/>'
+    +'<line x1="'+(HZ_X0*HZ_W).toFixed(1)+'" y1="'+lineY.toFixed(1)+'" x2="'+(HZ_X1*HZ_W).toFixed(1)+'" y2="'+lineY.toFixed(1)+'" stroke="#fff" stroke-width="3" opacity=".92"/>'
+    +'<circle cx="'+(HZ_X0*HZ_W).toFixed(1)+'" cy="'+lineY.toFixed(1)+'" r="5" fill="#fff"/>'
+    +'<text x="'+(HZ_X0*HZ_W).toFixed(1)+'" y="'+(lineY+34).toFixed(1)+'" text-anchor="middle" class="htick">now</text>'
+    +ticks+marks+"</svg>"
+    +'<div class="scenepick">'+WINDOW_SCENES.map(w=>'<button class="chip" type="button" data-winscene="'+esc(w.key)
+      +'" aria-pressed="'+(scene.key===w.key)+'">'+esc(w.label)+"</button>").join("")+"</div></div>";
+}
+
+const BC_W=1400, BC_H=933, PER_SHELF=9;
+function bookcaseSvg(list){
+  const sc=myShelfScene();
+  const x0=sc.x0*BC_W, x1=sc.x1*BC_W, span=x1-x0;
+  const slotW=span/PER_SHELF;
+  const shown=list.slice(-PER_SHELF*sc.shelves.length);
+  let books="";
+  shown.forEach((x,i)=>{
+    const row=Math.floor(i/PER_SHELF), col=i%PER_SHELF;
+    if(row>=sc.shelves.length)return;
+    const baseY=sc.shelves[row]*BC_H;
+    const bh=BC_H*0.118, bw=Math.min(slotW*0.78,bh*0.66);
+    const bx=x0+col*slotW+(slotW-bw)/2, by=baseY-bh-2;
+    const r=hash(x.id), sel=S.shelfSel===x.id;
+    books+='<g class="bk" data-shelf-open="'+esc(x.id)+'" style="cursor:pointer">'
+      +'<rect x="'+bx.toFixed(1)+'" y="'+by.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+bh.toFixed(1)+'" rx="2" fill="'+HUE[r%HUE.length]+'"/>'
+      +(x.art?'<image href="'+esc(x.art)+'" x="'+bx.toFixed(1)+'" y="'+by.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+bh.toFixed(1)+'" preserveAspectRatio="xMidYMid slice"/>':"")
+      +'<rect x="'+bx.toFixed(1)+'" y="'+by.toFixed(1)+'" width="'+(bw*0.13).toFixed(1)+'" height="'+bh.toFixed(1)+'" fill="rgba(0,0,0,.18)"/>'
+      +'<rect x="'+bx.toFixed(1)+'" y="'+by.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+bh.toFixed(1)+'" rx="2" fill="none" stroke="'+(sel?"#d9822b":"rgba(40,24,6,.35)")+'" stroke-width="'+(sel?4:1.4)+'"/>'
+      +'<ellipse cx="'+(bx+bw/2).toFixed(1)+'" cy="'+(by+bh+3).toFixed(1)+'" rx="'+(bw*0.55).toFixed(1)+'" ry="3" fill="rgba(60,40,16,.28)"/>'
+      +"</g>";
+  });
+  return '<div class="bcwrap"><svg class="bookcase" viewBox="0 0 '+BC_W+' '+BC_H+'" role="img" aria-label="The shelf">'
+    +'<image href="'+sceneUrl(sc.file)+'" x="0" y="0" width="'+BC_W+'" height="'+BC_H+'" preserveAspectRatio="xMidYMid slice"/>'
+    +books+"</svg>"
+    +'<div class="scenepick">'+SHELF_SCENES.map(w=>'<button class="chip" type="button" data-shelfscene="'+esc(w.key)
+      +'" aria-pressed="'+(sc.key===w.key)+'">'+esc(w.label)+"</button>").join("")+"</div></div>";
+}
+
+/* Covers for the shelf. Open Library for books, Apple for shows and films —
+   both free, neither needs an account. */
+async function olSearch(q){
+  const r=await fetch("https://openlibrary.org/search.json?limit=8&fields=title,author_name,first_publish_year,cover_i,key&q="+encodeURIComponent(q));
+  if(!r.ok)throw new Error("unavailable");
+  const j=await r.json();
+  return (j.docs||[]).map(d=>({
+    title:d.title||"",
+    sub:[(d.author_name||[])[0],d.first_publish_year].filter(Boolean).join(" · "),
+    art:d.cover_i?("https://covers.openlibrary.org/b/id/"+d.cover_i+"-L.jpg"):"",
+    url:d.key?("https://openlibrary.org"+d.key):""
+  })).filter(x=>x.title);
+}
+function appleSearch(q,entity){
+  return new Promise(res=>itunesSearch(q,entity,r=>{
+    if(!r)return res(null);
+    res(r.map(t=>({
+      title:t.trackName||t.collectionName||"",
+      sub:[t.artistName,(t.releaseDate||"").slice(0,4)].filter(Boolean).join(" · "),
+      art:bigArt(t.artworkUrl100||t.artworkUrl60||""),
+      url:t.trackViewUrl||t.collectionViewUrl||""
+    })).filter(x=>x.title));
+  }));
+}
+const SHELF_LOOKUP={Book:"openlibrary",Show:"tvSeason",Film:"movie"};
+async function runShelfSearch(){
+  const q=$("sq").value.trim();
+  if(!q)return;
+  const how=SHELF_LOOKUP[S.shelfKind];
+  $("sqOut").innerHTML='<p class="meta">Looking…</p>';
+  let res=null;
+  try{ res = how==="openlibrary" ? await olSearch(q) : await appleSearch(q,how); }
+  catch(e){ res=null; }
+  if(res===null){ $("sqOut").innerHTML='<p class="meta">Lookup isn\'t reachable — fill it in below and it\'ll still save, just without a cover.</p>'; return; }
+  if(!res.length){ $("sqOut").innerHTML='<p class="meta">Nothing came back. Try fewer words.</p>'; return; }
+  S.shelfResults=res;
+  $("sqOut").innerHTML=res.map((t,i)=>'<button class="trackrow" data-shelf="'+i+'" type="button">'
+    +'<img src="'+esc(t.art)+'" alt="">'
+    +'<span><b>'+esc(t.title)+"</b><span>"+esc(t.sub)+"</span></span></button>").join("");
+}
+function pickShelf(i){
+  const t=S.shelfResults&&S.shelfResults[i];
+  if(!t)return;
+  S.shelfPick=t;
+  $("f1").value=t.title;
+  $("sqOut").innerHTML='<div class="trackrow" style="cursor:default;border-color:#2f7d74">'
+    +'<img src="'+esc(t.art)+'" alt="">'
+    +'<span><b>'+esc(t.title)+"</b><span>"+esc(t.sub)+"</span></span></div>";
 }
 
 /* Place lookup, so a pin knows where it is. OpenStreetMap's geocoder, no key. */
@@ -1093,14 +1427,16 @@ function mapSvg(){
 }
 
 /* music search — Apple's endpoint takes no key but sends no CORS headers */
-function itunesSearch(term,cb){
+function itunesSearch(term,entity,cb){
+  if(typeof entity==="function"){ cb=entity; entity="song"; }
   const name="itcb"+Math.random().toString(36).slice(2,9);
   const sc=document.createElement("script");let done=false;
   const cleanup=()=>{ try{delete window[name];}catch(e){window[name]=undefined;} if(sc.parentNode)sc.parentNode.removeChild(sc); };
   window[name]=data=>{ if(done)return; done=true; cleanup(); cb((data&&data.results)?data.results:[]); };
   sc.onerror=()=>{ if(done)return; done=true; cleanup(); cb(null); };
   setTimeout(()=>{ if(done)return; done=true; cleanup(); cb(null); },8000);
-  sc.src="https://itunes.apple.com/search?media=music&entity=song&limit=8&callback="+name+"&term="+encodeURIComponent(term);
+  const media=entity==="song"?"music":(entity==="movie"?"movie":"tvShow");
+  sc.src="https://itunes.apple.com/search?media="+media+"&entity="+entity+"&limit=8&callback="+name+"&term="+encodeURIComponent(term);
   document.body.appendChild(sc);
 }
 const bigArt=u=>u?String(u).replace(/\/\d+x\d+bb\./,"/200x200bb."):"";
@@ -1137,7 +1473,18 @@ function openForm(){
     +'<p class="err" id="fErr" hidden></p>'
     +'<div style="margin-top:12px"><button class="btn" id="fSave" type="button">Put it out</button></div>';
   f.hidden=false;$("dAdd").hidden=true;$("dCancel").hidden=false;
-  if(S.spot==="shelf"||S.spot==="map")renderKinds();
+  if(S.spot==="shelf"||S.spot==="map"||S.spot==="window")renderKinds();
+  if(S.spot==="window")S.winKind=WIN_KINDS[0];
+  if(S.spot==="shelf"){
+    S.shelfPick=null;S.shelfResults=null;
+    shelfLookupVisible();
+    $("sqGo").addEventListener("click",runShelfSearch);
+    $("sq").addEventListener("keydown",e=>{ if(e.key==="Enter"){e.preventDefault();runShelfSearch();} });
+    $("sqOut").addEventListener("click",e=>{
+      const b=e.target.closest("[data-shelf]");
+      if(b)pickShelf(parseInt(b.getAttribute("data-shelf"),10));
+    });
+  }
   wirePhotoDrop();
   if(S.spot==="map"){
     S.place=null;S.geoResults=null;
@@ -1193,7 +1540,7 @@ async function submit(){
   const v1=$("f1")?$("f1").value.trim():"", v2=$("f2")?$("f2").value.trim():"", v3=$("f3")?$("f3").value.trim():"";
   const hasTrack=(b==="radio"&&!!S.track), needPhoto=(b==="cork");
   const wantsPhoto=needPhoto||!!S.pendingPhoto;
-  const f={title:null,sub:null,note:null,url:null,kind:null,art:null,preview:null,qid:null,lat:null,lon:null};
+  const f={title:null,sub:null,note:null,url:null,kind:null,art:null,preview:null,qid:null,lat:null,lon:null,when_at:null};
 
   if(hasTrack){ f.title=S.track.title; f.sub=S.track.artist; f.art=S.track.art; f.preview=S.track.preview; f.url=S.track.url; }
   else if(needPhoto){ if(!S.pendingPhoto)return fail("Pick a photo first."); f.title=v1; }
@@ -1204,11 +1551,14 @@ async function submit(){
   if(b==="table"){ f.title=v1; f.qid=qid(); }
   if(b==="fridge"){ f.title=v1; f.note=v2; }
   if(b==="cookbook"){ f.title=v1; f.note=v2; f.url=v3?safeUrl(v3):null; }
-  if(b==="shelf"){ f.kind=S.shelfKind; f.title=v1; f.note=v2; f.url=v3?safeUrl(v3):null; }
+  if(b==="shelf"){ f.kind=S.shelfKind; f.title=v1; f.note=v2; f.url=v3?safeUrl(v3):null;
+    if(S.shelfPick){ f.art=S.shelfPick.art||null; f.sub=S.shelfPick.sub||null;
+      if(!f.url&&S.shelfPick.url)f.url=S.shelfPick.url; } }
   if(b==="radio"&&!hasTrack){ f.title=v1; f.sub=v2; f.url=v3?safeUrl(v3):null; }
   if(b==="map"){ f.title=v1; f.note=v2; f.kind=S.mapKind;
     if(S.place){ f.lat=S.place.lat; f.lon=S.place.lon; } }
-  if(b==="window"){ f.title=v1; f.note=v2; }
+  if(b==="window"){ f.title=v1; f.note=v2; f.kind=S.winKind;
+    const dv=$("fd")&&$("fd").value; if(dv)f.when_at=dv; }
 
   $("fSave").disabled=true;
   try{
@@ -1223,7 +1573,7 @@ async function submit(){
 }
 
 function openSpot(b){
-  S.spot=b;S.pulled=null;S.mapSel=null;closeForm();
+  S.spot=b;S.pulled=null;S.mapSel=null;S.shelfSel=null;S.shelfFilter="All";S.winSel=null;closeForm();
   S.viewSeen=(b==="drawer")?Date.now():(S.seen[b]||0);
   $("veil").hidden=false;renderDrawer();$("dClose").focus();
   if(b!=="drawer"){ S.seen[b]=Date.now(); lset("kitchen:seen",S.seen); drawGlows(); }
@@ -1421,6 +1771,17 @@ $("dQuestion").addEventListener("click",e=>{
   if((t=e.target.closest("[data-view]"))){ S.mapView=t.getAttribute("data-view"); renderDrawer(); return; }
   if((t=e.target.closest("[data-pin]"))){ S.mapSel=t.getAttribute("data-pin"); renderDrawer(); return; }
   if((t=e.target.closest("#mapAll"))){ S.mapSel=null; renderDrawer(); return; }
+  if((t=e.target.closest("[data-when]"))){ const id=t.getAttribute("data-when");
+    S.winSel=(S.winSel===id)?null:id; renderDrawer(); return; }
+  if((t=e.target.closest("#winAll"))){ S.winSel=null; renderDrawer(); return; }
+  if((t=e.target.closest("[data-winscene]"))){ pickScene("win_scene",t.getAttribute("data-winscene")); return; }
+  if((t=e.target.closest("[data-shelfscene]"))){ pickScene("shelf_scene",t.getAttribute("data-shelfscene")); return; }
+  if((t=e.target.closest("[data-filter]"))){ S.shelfFilter=t.getAttribute("data-filter"); S.shelfSel=null; renderDrawer(); return; }
+  if((t=e.target.closest("[data-shelf-open]"))){
+    const id=t.getAttribute("data-shelf-open");
+    S.shelfSel=(S.shelfSel===id)?null:id;
+    renderDrawer(); return;
+  }
 });
 $("dItems").addEventListener("click",e=>{
   let t;
@@ -1438,7 +1799,7 @@ $("whoBody").addEventListener("click",e=>{
 });
 $("dForm").addEventListener("click",e=>{
   const c=e.target.closest("[data-kind]");
-  if(c){setKind(c.getAttribute("data-kind"));renderKinds();}
+  if(c){setKind(c.getAttribute("data-kind"));renderKinds();shelfLookupVisible();}
 });
 $("meRoster").addEventListener("click",e=>{
   const b=e.target.closest("[data-pick]");
